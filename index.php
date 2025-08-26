@@ -3,7 +3,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Database connection details
+// Database connection detailss
 $conn = new mysqli("localhost", "root", "", "bincomphptest"); // Adjust credentials if needed
 
 // Check connection
