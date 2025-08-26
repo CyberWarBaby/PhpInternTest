@@ -20,7 +20,9 @@ $submitted = false;
 if (isset($_POST['view_polling_unit'])) {
     $polling_unit_id = intval($_POST['polling_unit_id']);
     if ($polling_unit_id > 0) {
-        $sql = "SELECT party_abbreviation, party_score FROM announced_pu_results WHERE polling_unit_uniqueid = $polling_unit_id";
+        $sql = "SELECT party_abbreviation, party_score 
+                FROM announced_pu_results 
+                WHERE polling_unit_uniqueid = $polling_unit_id";
         $polling_unit_results = $conn->query($sql);
     }
 }
@@ -41,18 +43,27 @@ if (isset($_POST['view_lga'])) {
 // Handle New Polling Unit Results Submission (Question 3)
 if (isset($_POST['submit_results'])) {
     $polling_unit_id = intval($_POST['new_polling_unit_id']);
-    $pdp = intval($_POST['pdp']);
-    $acn = intval($_POST['acn']);
-    
-    // Insert the results for each party
-    $conn->query("INSERT INTO announced_pu_results (polling_unit_uniqueid, party_abbreviation, party_score) VALUES ($polling_unit_id, 'PDP', $pdp)");
-    $conn->query("INSERT INTO announced_pu_results (polling_unit_uniqueid, party_abbreviation, party_score) VALUES ($polling_unit_id, 'ACN', $acn)");
-    $submitted = true;
+
+    if ($polling_unit_id > 0 && isset($_POST['party_scores'])) {
+        foreach ($_POST['party_scores'] as $party => $score) {
+            $party = $conn->real_escape_string($party);
+            $score = intval($score);
+            $conn->query("INSERT INTO announced_pu_results 
+                          (polling_unit_uniqueid, party_abbreviation, party_score) 
+                          VALUES ($polling_unit_id, '$party', $score)");
+        }
+        $submitted = true;
+    }
 }
 
 // Fetch LGAs for dropdown
 $lga_sql = "SELECT lga_id, lga_name FROM lga";
 $lga_result = $conn->query($lga_sql);
+
+// Fetch parties for dynamic input
+$party_sql = "SELECT partyid, partyname, partyabbreviation FROM party";
+$party_result = $conn->query($party_sql);
+
 ?>
 
 <!DOCTYPE html>
@@ -111,12 +122,14 @@ $lga_result = $conn->query($lga_sql);
     <label>Polling Unit ID:</label>
     <input type="number" name="new_polling_unit_id" required><br><br>
 
-    <label>PDP Score:</label>
-    <input type="number" name="pdp" required><br>
+    <?php if ($party_result && $party_result->num_rows > 0) { ?>
+        <?php while ($row = $party_result->fetch_assoc()) { ?>
+            <label><?php echo $row['partyname']; ?> (<?php echo $row['partyabbreviation']; ?>) Score:</label>
+            <input type="number" name="party_scores[<?php echo $row['partyabbreviation']; ?>]" value="0" required><br>
+        <?php } ?>
+    <?php } ?>
 
-    <label>ACN Score:</label>
-    <input type="number" name="acn" required><br><br>
-
+    <br>
     <input type="submit" name="submit_results" value="Submit Results">
 </form>
 
